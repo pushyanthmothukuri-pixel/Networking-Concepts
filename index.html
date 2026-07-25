@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPAM & CIDR Utility Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Styling -->
+    <style>
+        :root {
+            --bg-main: #0b0f19;
+            --bg-card: rgba(22, 28, 45, 0.7);
+            --bg-input: #111827;
+            --border-color: #1f2937;
+            --border-glow: rgba(99, 102, 241, 0.15);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --primary-accent: #6366f1;
+            --secondary-accent: #a855f7;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --transition-speed: 0.25s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-accent);
+        }
+
+        header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #d8b4fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .api-status.offline {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--danger-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Tabs Navigation */
+        .tabs-container {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0 1rem 0;
+            padding: 0 1.5rem;
+        }
+
+        .tabs-list {
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            padding: 0.35rem;
+            border-radius: 12px;
+            display: flex;
+            gap: 0.25rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        }
+
+        /* Main Workspace */
+        main {
+            flex: 1;
+            padding: 0 2rem 3rem 2rem;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Grid Layouts */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .dashboard-grid.two-col {
+                grid-template-columns: 350px 1fr;
+            }
+            .dashboard-grid.three-col {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        /* Cards Design (Glassmorphism) */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.75rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            position: relative;
+            transition: border-color var(--transition-speed);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Forms Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all var(--transition-speed);
+        }
+
+        .input-control:focus {
+            outline: none;
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px var(--border-glow);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            margin-bottom: 1.25rem;
+        }
+
+        .checkbox-group input {
+            cursor: pointer;
+            accent-color: var(--primary-accent);
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-group span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        /* Buttons Styling */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            border: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+            color: white;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-secondary:hover {
+            background-color: #2e3b4e;
+        }
+
+        .btn-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-pool { background: rgba(99, 102, 241, 0.1); color: var(--primary-accent); border: 1px solid rgba(99, 102, 241, 0.2); }
+        .badge-container { background: rgba(168, 85, 247, 0.1); color: var(--secondary-accent); border: 1px solid rgba(168, 85, 247, 0.2); }
+        .badge-active { background: rgba(16, 185, 129, 0.1); color: var(--success-color); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-reserved { background: rgba(245, 158, 11, 0.1); color: var(--warning-color); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+        /* Tree lists */
+        .tree-node {
+            border-left: 1px dashed var(--border-color);
+            margin-left: 1rem;
+            padding-left: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .tree-node.root {
+            border-left: none;
+            margin-left: 0;
+            padding-left: 0;
+        }
+
+        .subnet-card-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+        }
+
+        .subnet-card-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateX(3px);
+        }
+
+        .subnet-info-main {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .subnet-prefix {
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .subnet-actions-list {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all var(--transition-speed);
+        }
+
+        .icon-btn:hover {
+            color: var(--danger-color);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Utilization bar */
+        .utilization-bar-container {
+            margin-top: 1rem;
+            background: var(--bg-input);
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .utilization-bar {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary-accent), var(--secondary-accent));
+            border-radius: 5px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .utilization-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.4rem;
+        }
+
+        /* Grid data tables */
+        .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            padding: 1rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        /* CIDR Card layouts */
+        .cidr-tool-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .cidr-tool-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .cidr-result-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .cidr-property-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.85rem;
+        }
+
+        .cidr-property-row:last-child {
+            border-bottom: none;
+        }
+
+        .cidr-prop-name {
+            color: var(--text-secondary);
+        }
+
+        .cidr-prop-val {
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        /* List outputs */
+        .cidr-list-output {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-top: 0.75rem;
+        }
+
+        .cidr-list-item {
+            padding: 0.25rem 0;
+            color: var(--text-primary);
+        }
+
+        /* Collision detector inputs */
+        .collision-table-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .collision-table-row .input-control {
+            flex: 1;
+        }
+
+        .collision-output-area {
+            margin-top: 1.5rem;
+        }
+
+        .collision-pair-card {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px dashed var(--danger-color);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .collision-pair-details span {
+            font-weight: 600;
+        }
+
+        .collision-overlap {
+            font-family: monospace;
+            background: rgba(239, 68, 68, 0.15);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            color: #fca5a5;
+        }
+
+        /* JSON Adjacency block */
+        pre {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo-section">
+            <div class="logo-icon">IP</div>
+            <div>
+                <h1>IPAM & CIDR Dashboard</h1>
+                <p style="font-size: 0.75rem; color: var(--text-secondary);">Advanced IP Address Management</p>
+            </div>
+        </div>
+        <div class="api-status" id="apiStatus">
+            <div class="status-dot"></div>
+            <span id="statusText">Checking Backend Connection...</span>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-container">
+        <div class="tabs-list">
+            <button class="tab-btn active" onclick="switchTab('subnetsTab')">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-top: -2px;"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/></svg>
+                Subnets Manager
+            </button>
+            <button class="tab-btn" onclick="switchTab('allocationsTab')">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-top: -2px;"><path d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+                IP Allocations
+            </button>
+            <button class="tab-btn" onclick="switchTab('cidrTab')">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-top: -2px;"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zM1 5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5zm5-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V2z"/></svg>
+                CIDR Utility Suite
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main>
+
+        <!-- ========================================== -->
+        <!-- SUBNETS TAB CONTENT -->
+        <!-- ========================================== -->
+        <div id="subnetsTab" class="tab-content active">
+            <div class="dashboard-grid two-col">
+                <!-- Left Column: Forms -->
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <!-- Create VRF Form -->
+                    <div class="glass-card">
+                        <div class="card-title">Create Isolated Routing Domain (VRF)</div>
+                        <form id="createVrfForm" onsubmit="handleCreateVrf(event)">
+                            <div class="form-group">
+                                <label for="vrfName">VRF Name</label>
+                                <input type="text" id="vrfName" class="input-control" placeholder="e.g. Prod-VPC-A" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vrfRd">Route Distinguisher (Optional)</label>
+                                <input type="text" id="vrfRd" class="input-control" placeholder="e.g. 65000:100">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create VRF</button>
+                        </form>
+                    </div>
+
+                    <!-- Create Subnet Form -->
+                    <div class="glass-card">
+                        <div class="card-title">Define Subnet Prefix</div>
+                        <form id="createSubnetForm" onsubmit="handleCreateSubnet(event)">
+                            <div class="form-group">
+                                <label for="subnetVrf">Routing Domain (VRF)</label>
+                                <select id="subnetVrf" class="input-control">
+                                    <option value="">Global Routing Table</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="subnetPrefix">Subnet CIDR Prefix</label>
+                                <input type="text" id="subnetPrefix" class="input-control" placeholder="e.g. 10.0.0.0/16" required>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="subnetIsPool" checked>
+                                <span>Host Allocation Pool (IPs can be allocated)</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="subnetDesc">Description</label>
+                                <input type="text" id="subnetDesc" class="input-control" placeholder="e.g. Staging network container">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Subnet</button>
+                        </form>
+                    </div>
+
+                    <!-- Allocate Next Available Subnet -->
+                    <div class="glass-card">
+                        <div class="card-title">Allocate Next-Available Subnet</div>
+                        <form id="nextSubnetForm" onsubmit="handleAllocateNextSubnet(event)">
+                            <div class="form-group">
+                                <label for="parentSubnetSelect">Parent Subnet Container</label>
+                                <select id="parentSubnetSelect" class="input-control" required>
+                                    <option value="">Select a container subnet...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="targetPrefixLen">Target Subnet Prefix Size</label>
+                                <select id="targetPrefixLen" class="input-control">
+                                    <option value="24">/24 (256 IPs)</option>
+                                    <option value="25">/25 (128 IPs)</option>
+                                    <option value="26">/26 (64 IPs)</option>
+                                    <option value="27">/27 (32 IPs)</option>
+                                    <option value="28">/28 (16 IPs)</option>
+                                    <option value="29">/29 (8 IPs)</option>
+                                    <option value="30">/30 (4 IPs)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Find & Allocate Subnet</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right Column: Subnets Tree and Details -->
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <!-- Subnets Tree Viewer -->
+                    <div class="glass-card" style="min-height: 300px;">
+                        <div class="card-header">
+                            <div class="card-title">Subnets Containment Tree</div>
+                            <select id="treeVrfFilter" class="input-control" style="width: 200px;" onchange="loadSubnetsTree()">
+                                <option value="">Global Table</option>
+                            </select>
+                        </div>
+                        <div id="subnetsTreeArea">
+                            <p style="color: var(--text-secondary); text-align: center; margin-top: 30px;">Loading subnets...</p>
+                        </div>
+                    </div>
+
+                    <!-- Subnet Details & Utilization Card -->
+                    <div class="glass-card" id="subnetDetailsCard" style="display: none;">
+                        <div class="card-title" id="detailCardTitle">Subnet Details</div>
+                        <div class="cidr-result-card">
+                            <div class="cidr-property-row">
+                                <span class="cidr-prop-name">Subnet Prefix</span>
+                                <span class="cidr-prop-val" id="detailPrefix">-</span>
+                            </div>
+                            <div class="cidr-property-row">
+                                <span class="cidr-prop-name">Subnet Type</span>
+                                <span class="cidr-prop-val" id="detailType">-</span>
+                            </div>
+                            <div class="cidr-property-row">
+                                <span class="cidr-prop-name">Status</span>
+                                <span class="cidr-prop-val" id="detailStatus">-</span>
+                            </div>
+                            <div class="cidr-property-row" id="usableIPsRow">
+                                <span class="cidr-prop-name">Usable Host IPs</span>
+                                <span class="cidr-prop-val" id="detailUsableIPs">-</span>
+                            </div>
+                            <div class="cidr-property-row" id="allocatedIPsRow">
+                                <span class="cidr-prop-name">Allocated Host IPs</span>
+                                <span class="cidr-prop-val" id="detailAllocatedIPs">-</span>
+                            </div>
+                            <div class="cidr-property-row" id="freeIPsRow">
+                                <span class="cidr-prop-name">Available Host IPs</span>
+                                <span class="cidr-prop-val" id="detailFreeIPs">-</span>
+                            </div>
+                            <div class="cidr-property-row" id="coveredIPsRow" style="display: none;">
+                                <span class="cidr-prop-name">Covered IPs by Children</span>
+                                <span class="cidr-prop-val" id="detailCoveredIPs">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Utilization Gauge -->
+                        <div class="utilization-bar-container">
+                            <div class="utilization-bar" id="detailUtilBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="utilization-text">
+                            <span>Subnet Space Utilization</span>
+                            <span id="detailUtilText">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- IP ALLOCATIONS TAB CONTENT -->
+        <!-- ========================================== -->
+        <div id="allocationsTab" class="tab-content">
+            <div class="dashboard-grid two-col">
+                <!-- Left: Form to allocate -->
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <!-- Allocate specific IP -->
+                    <div class="glass-card">
+                        <div class="card-title">Allocate Host IP Address</div>
+                        <form id="allocateIpForm" onsubmit="handleAllocateSpecificIp(event)">
+                            <div class="form-group">
+                                <label for="allocIpVrf">Routing Domain (VRF)</label>
+                                <select id="allocIpVrf" class="input-control" onchange="loadVrfSubnetPools()">
+                                    <option value="">Global Table</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="allocIpSubnet">Subnet Pool</label>
+                                <select id="allocIpSubnet" class="input-control" required>
+                                    <option value="">Select a pool subnet...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="specificIpAddr">Specific IP Address (Optional)</label>
+                                <input type="text" id="specificIpAddr" class="input-control" placeholder="Leave empty for next available">
+                            </div>
+                            <div class="form-group">
+                                <label for="allocDnsName">DNS Hostname Record (Optional)</label>
+                                <input type="text" id="allocDnsName" class="input-control" placeholder="e.g. server-01.prod">
+                            </div>
+                            <div class="form-group">
+                                <label for="allocMacAddress">MAC Address (Optional)</label>
+                                <input type="text" id="allocMacAddress" class="input-control" placeholder="e.g. aa:bb:cc:dd:ee:ff">
+                            </div>
+                            <div class="form-group">
+                                <label for="allocDesc">Purpose Description</label>
+                                <input type="text" id="allocDesc" class="input-control" placeholder="e.g. Web server primary interface">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Allocate IP</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right: Allocations List -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title">Active IP Address Allocations</div>
+                        <select id="allocListVrfFilter" class="input-control" style="width: 200px;" onchange="loadAllocatedIps()">
+                            <option value="">Global Table</option>
+                        </select>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Subnet Pool</th>
+                                    <th>Status</th>
+                                    <th>DNS Name</th>
+                                    <th>MAC Address</th>
+                                    <th>Description</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allocationsTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-secondary);">No IP allocations found in this VRF.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CIDR UTILITIES TAB CONTENT -->
+        <!-- ========================================== -->
+        <div id="cidrTab" class="tab-content">
+            <div class="cidr-tool-grid">
+                
+                <!-- CIDR Inspector Card -->
+                <div class="glass-card">
+                    <div class="card-title">CIDR Calculator & Inspector</div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Calculates netmask, wildcard mask, usable IPs, and subnet properties.</p>
+                    <div class="form-group">
+                        <label for="inspectCidr">IP Network Range (CIDR)</label>
+                        <input type="text" id="inspectCidr" class="input-control" value="192.168.1.0/24" oninput="runCidrInspection()">
+                    </div>
+                    <div class="cidr-result-card" id="inspectResultCard">
+                        <!-- Result rows will populate dynamically -->
+                        <p style="color: var(--text-secondary); text-align: center;">Enter a valid CIDR block</p>
+                    </div>
+                </div>
+
+                <!-- CIDR Splitter Card -->
+                <div class="glass-card">
+                    <div class="card-title">Subnet Splitter</div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Divides a larger CIDR block into equal smaller prefixes.</p>
+                    <div class="form-group">
+                        <label for="splitParent">Parent CIDR Block</label>
+                        <input type="text" id="splitParent" class="input-control" value="10.0.0.0/24">
+                    </div>
+                    <div class="form-group">
+                        <label for="splitTargetLen">Target Prefix Length</label>
+                        <input type="number" id="splitTargetLen" class="input-control" value="26" min="1" max="32">
+                    </div>
+                    <button class="btn btn-primary" onclick="runSubnetSplit()">Split CIDR Block</button>
+                    <div class="cidr-list-output" id="splitResultList" style="display: none;"></div>
+                </div>
+
+                <!-- Route Aggregator (Supernetter) -->
+                <div class="glass-card">
+                    <div class="card-title">CIDR Route Aggregator (Supernet)</div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Consolidates a list of contiguous prefixes or host IPs into summarizing CIDRs.</p>
+                    <div class="form-group">
+                        <label for="supernetInput">Prefixes/IPs (One per line or comma-separated)</label>
+                        <textarea id="supernetInput" class="input-control" rows="4" style="font-family: monospace; resize: vertical;" placeholder="10.0.0.0/24&#10;10.0.1.0/24&#10;10.0.2.0/24&#10;10.0.3.0/24"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="runRouteAggregation()">Aggregate Prefixes</button>
+                    <div class="cidr-list-output" id="supernetResultList" style="display: none;"></div>
+                </div>
+
+                <!-- CIDR Difference Subtractor -->
+                <div class="glass-card">
+                    <div class="card-title">CIDR Range Subtraction (Difference)</div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Excludes a set of sub-prefixes from a parent range to compute remaining free blocks.</p>
+                    <div class="form-group">
+                        <label for="diffParent">Parent CIDR Block</label>
+                        <input type="text" id="diffParent" class="input-control" value="10.0.0.0/22">
+                    </div>
+                    <div class="form-group">
+                        <label for="diffOccupied">Occupied Blocks (Comma-separated or line-separated)</label>
+                        <textarea id="diffOccupied" class="input-control" rows="3" style="font-family: monospace; resize: vertical;" placeholder="10.0.0.0/24, 10.0.2.0/23"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="runCidrDifference()">Subtract Ranges</button>
+                    <div class="cidr-list-output" id="diffResultList" style="display: none;"></div>
+                </div>
+
+                <!-- Collision Detector Card -->
+                <div class="glass-card" style="grid-column: 1 / -1;">
+                    <div class="card-title">Multi-Range Collision & Overlap Detector</div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Compares multiple CIDR blocks side-by-side to highlight exact collisions and map overlapping domains.</p>
+                    
+                    <div id="collisionRowsContainer">
+                        <div class="collision-table-row">
+                            <input type="text" class="input-control col-id" value="VPC-A" placeholder="Label/ID (e.g. VPC-A)">
+                            <input type="text" class="input-control col-cidr" value="10.0.0.0/24" placeholder="CIDR (e.g. 10.0.0.0/24)">
+                            <button class="btn btn-danger" style="width: 45px; padding: 0;" onclick="removeCollisionRow(this)">X</button>
+                        </div>
+                        <div class="collision-table-row">
+                            <input type="text" class="input-control col-id" value="Subnet-B" placeholder="Label/ID (e.g. Subnet-B)">
+                            <input type="text" class="input-control col-cidr" value="10.0.0.128/25" placeholder="CIDR">
+                            <button class="btn btn-danger" style="width: 45px; padding: 0;" onclick="removeCollisionRow(this)">X</button>
+                        </div>
+                        <div class="collision-table-row">
+                            <input type="text" class="input-control col-id" value="VPC-C" placeholder="Label/ID">
+                            <input type="text" class="input-control col-cidr" value="192.168.1.0/24" placeholder="CIDR">
+                            <button class="btn btn-danger" style="width: 45px; padding: 0;" onclick="removeCollisionRow(this)">X</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-secondary" onclick="addCollisionRow()">+ Add Range Row</button>
+                        <button class="btn btn-primary" onclick="runCollisionDetection()">Verify Overlaps</button>
+                    </div>
+
+                    <!-- Collisions Output Area -->
+                    <div class="collision-output-area" id="collisionOutputArea" style="display: none;">
+                        <div class="card-title" style="font-size: 1.05rem; margin-bottom: 0.75rem;">Collision Detection Report</div>
+                        
+                        <div id="collisionReportGrid">
+                            <!-- Colliding pairs list -->
+                        </div>
+
+                        <div class="card-title" style="font-size: 1.05rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Overlap Adjacency Matrix</div>
+                        <pre id="overlapMatrixJson">{}</pre>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript logic -->
+    <script>
+        const API_BASE = window.location.origin;
+
+        // State variables
+        let vrfList = [];
+        let subnetsList = [];
+
+        // Initialize connection status
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/vrfs`);
+                if (response.ok) {
+                    document.getElementById('apiStatus').classList.remove('offline');
+                    document.getElementById('statusText').innerText = "Connected to IPAM API";
+                    return true;
+                }
+            } catch (e) {
+                console.error("Backend offline", e);
+            }
+            document.getElementById('apiStatus').classList.add('offline');
+            document.getElementById('statusText').innerText = "API Backend Offline (Reconnecting...)";
+            return false;
+        }
+
+        // On Page Load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkConnection();
+            await loadVrfs();
+            await loadSubnetsTree();
+            runCidrInspection();
+
+            // Auto-refresh connection status
+            setInterval(checkConnection, 5000);
+        });
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            
+            // Find clicking button in tabs list
+            const idx = tabId === 'subnetsTab' ? 0 : tabId === 'allocationsTab' ? 1 : 2;
+            document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+
+            if (tabId === 'allocationsTab') {
+                loadVrfSubnetPools();
+                loadAllocatedIps();
+            } else if (tabId === 'subnetsTab') {
+                loadVrfs();
+                loadSubnetsTree();
+            }
+        }
+
+        // ==========================================
+        // VRF & SUBNETS FUNCTIONS
+        // ==========================================
+        async function loadVrfs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/vrfs`);
+                if (!response.ok) return;
+                vrfList = await response.json();
+                
+                // Populate Subnet Create dropdown
+                const subnetVrfSel = document.getElementById('subnetVrf');
+                const treeVrfFilter = document.getElementById('treeVrfFilter');
+                const allocIpVrf = document.getElementById('allocIpVrf');
+                const allocListVrfFilter = document.getElementById('allocListVrfFilter');
+                
+                // Save selections
+                const activeSubnetVrf = subnetVrfSel.value;
+                const activeTreeFilter = treeVrfFilter.value;
+                const activeAllocIpVrf = allocIpVrf.value;
+                const activeAllocListVrf = allocListVrfFilter.value;
+                
+                const optionsHtml = '<option value="">Global Routing Table</option>' + 
+                    vrfList.map(v => `<option value="${v.id}">${v.name} (${v.rd || 'No RD'})</option>`).join('');
+                
+                subnetVrfSel.innerHTML = optionsHtml;
+                treeVrfFilter.innerHTML = optionsHtml;
+                allocIpVrf.innerHTML = optionsHtml;
+                allocListVrfFilter.innerHTML = optionsHtml;
+                
+                // Restore selections
+                subnetVrfSel.value = activeSubnetVrf;
+                treeVrfFilter.value = activeTreeFilter;
+                allocIpVrf.value = activeAllocIpVrf;
+                allocListVrfFilter.value = activeAllocListVrf;
+            } catch (e) {
+                console.error("Failed to load VRFs", e);
+            }
+        }
+
+        async function handleCreateVrf(event) {
+            event.preventDefault();
+            const name = document.getElementById('vrfName').value.trim();
+            const rd = document.getElementById('vrfRd').value.trim() || null;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/vrfs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, rd })
+                });
+
+                if (response.ok) {
+                    alert("VRF created successfully!");
+                    document.getElementById('createVrfForm').reset();
+                    await loadVrfs();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail || 'Could not create VRF'}`);
+                }
+            } catch (e) {
+                alert("Request failed. Is the API backend running?");
+            }
+        }
+
+        async function handleCreateSubnet(event) {
+            event.preventDefault();
+            const vrf_id = document.getElementById('subnetVrf').value || null;
+            const prefix = document.getElementById('subnetPrefix').value.trim();
+            const is_pool = document.getElementById('subnetIsPool').checked;
+            const description = document.getElementById('subnetDesc').value.trim() || null;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/subnets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vrf_id, prefix, is_pool, description })
+                });
+
+                if (response.ok) {
+                    alert("Subnet prefix created successfully!");
+                    document.getElementById('createSubnetForm').reset();
+                    await loadSubnetsTree();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail || 'Could not create Subnet'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function handleAllocateNextSubnet(event) {
+            event.preventDefault();
+            const parentId = document.getElementById('parentSubnetSelect').value;
+            const prefixLen = parseInt(document.getElementById('targetPrefixLen').value);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/subnets/${parentId}/next-available`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_prefix_len: prefixLen })
+                });
+
+                if (response.ok) {
+                    const sub = await response.json();
+                    alert(`Allocated Subnet: ${sub.prefix}`);
+                    await loadSubnetsTree();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail || 'Failed to allocate subnet'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function loadSubnetsTree() {
+            const vrf_id = document.getElementById('treeVrfFilter').value || null;
+            const treeArea = document.getElementById('subnetsTreeArea');
+            
+            try {
+                let url = `${API_BASE}/api/v1/subnets`;
+                if (vrf_id) {
+                    url += `?vrf_id=${vrf_id}`;
+                }
+                const response = await fetch(url);
+                if (!response.ok) {
+                    treeArea.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Error loading subnets.</p>';
+                    return;
+                }
+                subnetsList = await response.json();
+                
+                // Also update parent select choices for next-available subnet form
+                // Only subnets that are NOT pools can be parent containers
+                const parentSubnetSelect = document.getElementById('parentSubnetSelect');
+                const parentOptions = ['<option value="">Select a container subnet...</option>'] + 
+                    subnetsList.filter(s => !s.is_pool).map(s => `<option value="${s.id}">${s.prefix}</option>`).join('');
+                parentSubnetSelect.innerHTML = parentOptions;
+
+                if (subnetsList.length === 0) {
+                    treeArea.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 30px;">No subnets configured in this routing domain.</p>';
+                    return;
+                }
+
+                // Render Hierarchical Tree (roots have parent_id = null)
+                const roots = subnetsList.filter(s => s.parent_id === null);
+                treeArea.innerHTML = "";
+                roots.forEach(root => {
+                    const rootNode = renderTreeNode(root);
+                    treeArea.appendChild(rootNode);
+                });
+            } catch (e) {
+                treeArea.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Request failed.</p>';
+            }
+        }
+
+        function renderTreeNode(subnet) {
+            const wrapper = document.createElement('div');
+            wrapper.className = subnet.parent_id ? 'tree-node' : 'tree-node root';
+            
+            // Build item row
+            const item = document.createElement('div');
+            item.className = 'subnet-card-item';
+            item.style.marginBottom = '0.5rem';
+            item.onclick = (e) => {
+                // Prevent trigger when clicking action buttons
+                if (e.target.closest('.subnet-actions-list')) return;
+                showSubnetDetails(subnet.id);
+            };
+
+            const info = document.createElement('div');
+            info.className = 'subnet-info-main';
+
+            const prefixSpan = document.createElement('span');
+            prefixSpan.className = 'subnet-prefix';
+            prefixSpan.innerText = subnet.prefix;
+
+            const badge = document.createElement('span');
+            badge.className = subnet.is_pool ? 'badge badge-pool' : 'badge badge-container';
+            badge.innerText = subnet.is_pool ? 'Pool' : 'Container';
+
+            info.appendChild(prefixSpan);
+            info.appendChild(badge);
+
+            const actions = document.createElement('div');
+            actions.className = 'subnet-actions-list';
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn';
+            delBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+            delBtn.onclick = () => handleDeleteSubnet(subnet.id);
+
+            actions.appendChild(delBtn);
+            item.appendChild(info);
+            item.appendChild(actions);
+            wrapper.appendChild(item);
+
+            // Fetch and render children
+            const children = subnetsList.filter(s => s.parent_id === subnet.id);
+            children.forEach(child => {
+                wrapper.appendChild(renderTreeNode(child));
+            });
+
+            return wrapper;
+        }
+
+        async function handleDeleteSubnet(id) {
+            if (!confirm("Are you sure you want to delete this subnet prefix?")) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/subnets/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert("Subnet deleted.");
+                    document.getElementById('subnetDetailsCard').style.display = 'none';
+                    await loadSubnetsTree();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail || 'Could not delete subnet'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function showSubnetDetails(id) {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/subnets/${id}/utilization`);
+                if (!response.ok) return;
+                const util = await response.json();
+                
+                document.getElementById('subnetDetailsCard').style.display = 'block';
+                document.getElementById('detailPrefix').innerText = util.prefix;
+                document.getElementById('detailType').innerText = util.is_pool ? "IP Allocation Pool" : "Subnet Container";
+                
+                const percentage = util.utilization_percentage;
+                document.getElementById('detailUtilBar').style.width = `${percentage}%`;
+                document.getElementById('detailUtilText').innerText = `${percentage}%`;
+
+                // Success colors based on utilization
+                const bar = document.getElementById('detailUtilBar');
+                if (percentage > 85) {
+                    bar.style.background = 'var(--danger-color)';
+                } else if (percentage > 60) {
+                    bar.style.background = 'var(--warning-color)';
+                } else {
+                    bar.style.background = 'linear-gradient(to right, var(--primary-accent), var(--secondary-accent))';
+                }
+
+                if (util.is_pool) {
+                    document.getElementById('usableIPsRow').style.display = 'flex';
+                    document.getElementById('allocatedIPsRow').style.display = 'flex';
+                    document.getElementById('freeIPsRow').style.display = 'flex';
+                    document.getElementById('coveredIPsRow').style.display = 'none';
+
+                    document.getElementById('detailUsableIPs').innerText = util.usable_ips;
+                    document.getElementById('detailAllocatedIPs').innerText = util.allocated_ips;
+                    document.getElementById('detailFreeIPs').innerText = util.free_ips;
+                    document.getElementById('detailStatus').innerHTML = '<span class="badge badge-active">Allocation Active</span>';
+                } else {
+                    document.getElementById('usableIPsRow').style.display = 'none';
+                    document.getElementById('allocatedIPsRow').style.display = 'none';
+                    document.getElementById('freeIPsRow').style.display = 'none';
+                    document.getElementById('coveredIPsRow').style.display = 'flex';
+
+                    document.getElementById('detailCoveredIPs').innerText = `${util.allocated_subnet_ips} / ${util.total_ips} total IPs`;
+                    document.getElementById('detailStatus').innerHTML = '<span class="badge badge-container">Subnetted Container</span>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+
+        // ==========================================
+        // IP ALLOCATIONS FUNCTIONS
+        // ==========================================
+        async function loadVrfSubnetPools() {
+            const vrf_id = document.getElementById('allocIpVrf').value || null;
+            const selectEl = document.getElementById('allocIpSubnet');
+            
+            try {
+                let url = `${API_BASE}/api/v1/subnets`;
+                if (vrf_id) url += `?vrf_id=${vrf_id}`;
+                const response = await fetch(url);
+                if (!response.ok) return;
+                const subs = await response.json();
+                
+                // Only pools can hold IPs
+                const pools = subs.filter(s => s.is_pool);
+                
+                selectEl.innerHTML = '<option value="">Select a pool subnet...</option>' + 
+                    pools.map(p => `<option value="${p.id}">${p.prefix} (${p.description || 'No description'})</option>`).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadAllocatedIps() {
+            const vrf_id = document.getElementById('allocListVrfFilter').value || null;
+            const tableBody = document.getElementById('allocationsTableBody');
+            
+            try {
+                let url = `${API_BASE}/api/v1/ip-addresses`;
+                if (vrf_id) url += `?vrf_id=${vrf_id}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) return;
+                const list = await response.json();
+                
+                if (list.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No IP allocations found in this VRF.</td></tr>';
+                    return;
+                }
+                
+                // Render allocations row
+                tableBody.innerHTML = list.map(ip => {
+                    return `
+                        <tr>
+                            <td style="font-family: monospace; font-weight: 600;">${ip.address}</td>
+                            <td>${ip.subnet_id ? 'Pool Reference' : 'Unassociated'}</td>
+                            <td><span class="badge ${ip.status === 'allocated' ? 'badge-pool' : 'badge-reserved'}">${ip.status}</span></td>
+                            <td>${ip.dns_name || '-'}</td>
+                            <td style="font-family: monospace;">${ip.mac_address || '-'}</td>
+                            <td>${ip.description || '-'}</td>
+                            <td>
+                                <button class="btn btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; width: auto;" onclick="handleReleaseIp('${ip.id}')">Release</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function handleAllocateSpecificIp(event) {
+            event.preventDefault();
+            const vrf_id = document.getElementById('allocIpVrf').value || null;
+            const subnet_id = document.getElementById('allocIpSubnet').value;
+            const address = document.getElementById('specificIpAddr').value.trim();
+            const dns_name = document.getElementById('allocDnsName').value.trim() || null;
+            const mac_address = document.getElementById('allocMacAddress').value.trim() || null;
+            const description = document.getElementById('allocDesc').value.trim() || null;
+
+            try {
+                let response;
+                if (address) {
+                    // Manual Specific Allocation
+                    response = await fetch(`${API_BASE}/api/v1/ip-addresses`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ vrf_id, subnet_id, address, dns_name, mac_address, description })
+                    });
+                } else {
+                    // Dynamic Next Available Allocation
+                    response = await fetch(`${API_BASE}/api/v1/subnets/${subnet_id}/allocate-ip`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dns_name, mac_address, description })
+                    });
+                }
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`IP Address successfully allocated: ${result.address}`);
+                    document.getElementById('allocateIpForm').reset();
+                    await loadAllocatedIps();
+                } else {
+                    const err = await response.json();
+                    alert(`Allocation failed: ${err.detail || 'Check address availability'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function handleReleaseIp(id) {
+            if (!confirm("Are you sure you want to release this IP address?")) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/ip-addresses/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert("IP address released.");
+                    await loadAllocatedIps();
+                } else {
+                    alert("Failed to release IP.");
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+
+        // ==========================================
+        // CIDR UTILITY FUNCTIONS
+        // ==========================================
+        async function runCidrInspection() {
+            const cidr = document.getElementById('inspectCidr').value.trim();
+            const card = document.getElementById('inspectResultCard');
+            
+            if (!cidr || !cidr.includes('/')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/cidr/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cidr })
+                });
+
+                if (response.ok) {
+                    const details = await response.json();
+                    card.innerHTML = `
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Network IP</span>
+                            <span class="cidr-prop-val">${details.network_address}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Subnet Mask</span>
+                            <span class="cidr-prop-val">${details.netmask}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Broadcast Address</span>
+                            <span class="cidr-prop-val">${details.broadcast_address}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Wildcard mask</span>
+                            <span class="cidr-prop-val">${details.wildcard_mask}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">First usable host IP</span>
+                            <span class="cidr-prop-val">${details.first_usable_ip}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Last usable host IP</span>
+                            <span class="cidr-prop-val">${details.last_usable_ip}</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Host capacities</span>
+                            <span class="cidr-prop-val">${details.usable_ips} usable / ${details.total_ips} total</span>
+                        </div>
+                        <div class="cidr-property-row">
+                            <span class="cidr-prop-name">Classification</span>
+                            <span class="cidr-prop-val">
+                                ${details.is_private ? '<span class="badge badge-container">Private IP</span>' : '<span class="badge badge-active">Public Global</span>'}
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = '<p style="color: var(--danger-color); text-align: center;">Invalid CIDR network prefix</p>';
+                }
+            } catch (e) {
+                card.innerHTML = '<p style="color: var(--danger-color); text-align: center;">Request error</p>';
+            }
+        }
+
+        async function runSubnetSplit() {
+            const cidr = document.getElementById('splitParent').value.trim();
+            const new_prefix_len = parseInt(document.getElementById('splitTargetLen').value);
+            const listEl = document.getElementById('splitResultList');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/cidr/split`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cidr, new_prefix_len })
+                });
+
+                if (response.ok) {
+                    const list = await response.json();
+                    listEl.style.display = 'block';
+                    listEl.innerHTML = list.map(c => `<div class="cidr-list-item">${c}</div>`).join('');
+                } else {
+                    const err = await response.json();
+                    alert(`Split error: ${err.detail || 'Could not parse network boundaries'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function runRouteAggregation() {
+            const text = document.getElementById('supernetInput').value.trim();
+            const listEl = document.getElementById('supernetResultList');
+            if (!text) return;
+
+            // Normalize split by newline or comma
+            const prefixes = text.split(/[\n,]+/).map(p => p.trim()).filter(p => p.length > 0);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/cidr/supernet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prefixes })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    listEl.style.display = 'block';
+                    listEl.innerHTML = result.aggregated_prefixes.map(c => `<div class="cidr-list-item">${c}</div>`).join('');
+                } else {
+                    const err = await response.json();
+                    alert(`Supernet aggregation error: ${err.detail || 'Could not parse ranges'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        async function runCidrDifference() {
+            const parent = document.getElementById('diffParent').value.trim();
+            const occupiedText = document.getElementById('diffOccupied').value.trim();
+            const listEl = document.getElementById('diffResultList');
+            if (!parent || !occupiedText) return;
+
+            const occupied = occupiedText.split(/[\n,]+/).map(p => p.trim()).filter(p => p.length > 0);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/cidr/difference`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parent, occupied })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    listEl.style.display = 'block';
+                    if (result.free_prefixes.length === 0) {
+                        listEl.innerHTML = '<div style="color: var(--danger-color);">No remaining space available.</div>';
+                    } else {
+                        listEl.innerHTML = result.free_prefixes.map(c => `<div class="cidr-list-item">${c}</div>`).join('');
+                    }
+                } else {
+                    const err = await response.json();
+                    alert(`Difference calculation error: ${err.detail || 'Verify child boundaries belong to parent'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+
+        // Collision rows builder
+        function addCollisionRow() {
+            const container = document.getElementById('collisionRowsContainer');
+            const row = document.createElement('div');
+            wrapperIndex = container.children.length + 1;
+            row.className = 'collision-table-row';
+            row.innerHTML = `
+                <input type="text" class="input-control col-id" value="Range-${wrapperIndex}" placeholder="Label/ID">
+                <input type="text" class="input-control col-cidr" placeholder="CIDR">
+                <button class="btn btn-danger" style="width: 45px; padding: 0;" onclick="removeCollisionRow(this)">X</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeCollisionRow(btn) {
+            const container = document.getElementById('collisionRowsContainer');
+            if (container.children.length > 1) {
+                btn.closest('.collision-table-row').remove();
+            } else {
+                alert("At least one row is required.");
+            }
+        }
+
+        async function runCollisionDetection() {
+            const rows = document.querySelectorAll('.collision-table-row');
+            const reqData = [];
+            
+            rows.forEach(row => {
+                const id = row.querySelector('.col-id').value.trim();
+                const cidr = row.querySelector('.col-cidr').value.trim();
+                if (id && cidr) {
+                    reqData.push({ id, cidr });
+                }
+            });
+
+            if (reqData.length < 2) {
+                alert("Please add at least two scopes to compare.");
+                return;
+            }
+
+            const output = document.getElementById('collisionOutputArea');
+            const grid = document.getElementById('collisionReportGrid');
+            const pre = document.getElementById('overlapMatrixJson');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/cidr/check-collisions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqData)
+                });
+
+                if (response.ok) {
+                    const report = await response.json();
+                    output.style.display = 'block';
+                    pre.innerText = JSON.stringify(report.overlap_matrix, null, 2);
+
+                    if (report.has_collisions) {
+                        grid.innerHTML = report.collisions.map(c => `
+                            <div class="collision-pair-card">
+                                <div class="collision-pair-details">
+                                    <span>${c.id1}</span> (${c.cidr1}) collides with <span>${c.id2}</span> (${c.cidr2})
+                                </div>
+                                <div class="collision-overlap">
+                                    Overlap: ${c.overlap_cidr}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        grid.innerHTML = `
+                            <div style="background: rgba(16, 185, 129, 0.08); border: 1px dashed var(--success-color); border-radius: 8px; padding: 0.85rem 1rem; color: #a7f3d0; font-size: 0.9rem; text-align: center;">
+                                ✔ Zero collisions detected! All ranges are cleanly isolated.
+                            </div>
+                        `;
+                    }
+                } else {
+                    const err = await response.json();
+                    alert(`Verify ranges: ${err.detail || 'Malformed CIDR formats'}`);
+                }
+            } catch (e) {
+                alert("Request failed.");
+            }
+        }
+    </script>
+</body>
+</html>

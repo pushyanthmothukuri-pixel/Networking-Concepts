@@ -1,0 +1,15 @@
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test caches & reports
+.pytest_cache/
+test-results.xml
+.system_generated/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
