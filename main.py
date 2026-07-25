@@ -32,6 +32,10 @@ from cidr_logic import (
 # Uses environment variable DATABASE_URL if present, falling back to local SQLite database.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ipam.db")
 
+# SQLAlchemy 1.4+ deprecated 'postgres://' in favor of 'postgresql://'
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # check_same_thread is only required/supported for SQLite
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
