@@ -2,7 +2,7 @@
 
 An enterprise-grade **IP Address Management (IPAM)** and **CIDR Calculator Suite** built to automate IP planning, subnet containment validation, IP allocation, and collision mapping.
 
-🚀 **[Live Web Dashboard](PASTE_YOUR_RENDER_URL_HERE)** *(Replace this placeholder with your Render deployment URL once active)*
+🚀 **[Live Web Dashboard](https://ipam-dashboard.onrender.com/)**
 
 ---
 
@@ -89,5 +89,5 @@ Open your browser and navigate to:
 4. Add a **PostgreSQL Database** on Render (New -> PostgreSQL).
 5. Go to your Web Service **Environment** settings and click **Add Environment Variable**:
    - **Key**: `DATABASE_URL`
-   - **Value**: *Paste your Render Internal Database URL*
+   - **Value**: *postgresql://narayana_user:TzASFd0oQxNjQAiRBtQJOqM3DM2XdySj@dpg-d9i8g6b7uimc73b4ljn0-a/narayana*
 6. Save Changes. Render will redeploy and configure PostgreSQL automatically.
