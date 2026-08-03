@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise IPAM & CIDR Utility System Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: #ffffff;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        h1, h2, h3, h4 { color: #0f172a; margin-top: 1.5em; }
+        h1 { border-bottom: 3px solid #6366f1; padding-bottom: 10px; font-size: 2.2em; }
+        h2 { border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; color: #4338ca; }
+        code { background: #f1f5f9; padding: 3px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #0f172a; }
+        pre { background: #0f172a; color: #f8fafc; padding: 18px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; }
+        th { background-color: #e0e7ff; color: #3730a3; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        blockquote { border-left: 4px solid #6366f1; margin: 0; padding-left: 16px; color: #475569; }
+        hr { border: 0; height: 1px; background: #e2e8f0; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="enterprise-ipam-cidr-utility-system">Enterprise IPAM &amp; CIDR Utility System</h1>
+<h2 id="complete-technical-specification-architectural-blueprints-and-system-manual">Complete Technical Specification, Architectural Blueprints, and System Manual</h2>
+<hr />
+<h3 id="executive-overview-document-metadata">Executive Overview &amp; Document Metadata</h3>
+<ul>
+<li><strong>Document Title:</strong> Enterprise IPAM &amp; CIDR Utility System Technical Reference Manual</li>
+<li><strong>Version:</strong> 1.0.0 (Production Release)</li>
+<li><strong>Project Team / Authors:</strong></li>
+<li>M. Pushyanth</li>
+<li>B. Narayana</li>
+<li>Sharook</li>
+<li>M. Balaji</li>
+<li><strong>Target Audience:</strong> Cloud Engineers, Network Architects, DevOps Engineers, and Software Developers</li>
+<li><strong>System Scope:</strong> State-managed Multi-tenant IP Address Management (IPAM) &amp; Stateless CIDR Math Engine</li>
+</ul>
+<hr />
+<h2 id="1-system-vision-architecture-overview">1. System Vision &amp; Architecture Overview</h2>
+<h3 id="11-business-rationale-problem-statement">1.1 Business Rationale &amp; Problem Statement</h3>
+<p>Modern cloud infrastructure, hybrid networking environments, and multi-tenant enterprise data centers demand rigorous IP Address Management (IPAM). Unplanned IP address assignments inevitably lead to subnet overlaps, routing table bloat, IP space exhaustion, and catastrophic cross-tenant traffic leaks.</p>
+<p>The <strong>Enterprise IPAM &amp; CIDR Utility System</strong> is a production-grade, dual-capability networking platform built with <strong>FastAPI</strong>, <strong>SQLAlchemy 2.0</strong>, <strong>Pydantic v2</strong>, and <strong>PostgreSQL/SQLite</strong>. It solves core enterprise networking challenges by providing:
+1. <strong>Stateless CIDR Math Suite:</strong> High-speed calculation of netmasks, host boundaries, binary-tree subnet differences, supernet aggregation, and multi-network collision detection.
+2. <strong>Stateful Multi-Tenant IPAM Engine:</strong> Tree-structured subnet containment, Virtual Routing and Forwarding (VRF) isolation, automatic next-available subnet/IP allocation, and live utilization metrics.</p>
+<hr />
+<h3 id="12-high-level-architecture-diagram">1.2 High-Level Architecture Diagram</h3>
+<pre><code class="language-mermaid">graph TD
+    User([Network Admin / API Client]) --&gt; UI[HTML5/CSS3 Dark-Mode Dashboard]
+    User --&gt; API Gateway[FastAPI REST Engine / Uvicorn API]
+
+    subgraph FastAPI Framework Layer
+        UI --&gt; Static[Index HTML UI Root /]
+        API Gateway --&gt; Exception[IPAMValidationError Handler]
+        API Gateway --&gt; CORS[CORS Middleware]
+
+        API Gateway --&gt; VRF Router[/api/v1/vrfs]
+        API Gateway --&gt; Subnet Router[/api/v1/subnets]
+        API Gateway --&gt; IP Router[/api/v1/ip-addresses]
+        API Gateway --&gt; CIDR Router[/api/v1/cidr]
+    end
+
+    subgraph Core Business Logic Layer
+        Subnet Router --&gt; IPAM Logic[ipam_logic.py: Containment &amp; Allocation Engine]
+        IP Router --&gt; IPAM Logic
+        CIDR Router --&gt; CIDR Logic[cidr_logic.py: Binary Tree Math Suite]
+    end
+
+    subgraph Data &amp; Persistence Layer
+        IPAM Logic --&gt; ORM[SQLAlchemy Declarative Models: models.py]
+        ORM --&gt; DB Decorators[Type Decorators: IPv4NetworkType / IPv4AddressType]
+        DB Decorators --&gt; Database[(PostgreSQL / SQLite Database)]
+    end
+</code></pre>
+<hr />
+<h2 id="2-technology-stack-key-innovations">2. Technology Stack &amp; Key Innovations</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Layer</th>
+<th style="text-align: left;">Component</th>
+<th style="text-align: left;">Version / Technology</th>
+<th style="text-align: left;">Key Responsibilities</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>API Framework</strong></td>
+<td style="text-align: left;">FastAPI</td>
+<td style="text-align: left;"><code>0.100.0+</code></td>
+<td style="text-align: left;">High-performance async/sync REST API endpoints, OpenAPI/Swagger generation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Data Validation</strong></td>
+<td style="text-align: left;">Pydantic</td>
+<td style="text-align: left;"><code>v2.0+</code></td>
+<td style="text-align: left;">Strict schema validation, custom field validators, data serialization.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ORM / Data Access</strong></td>
+<td style="text-align: left;">SQLAlchemy</td>
+<td style="text-align: left;"><code>2.0+</code></td>
+<td style="text-align: left;">Declarative mapping, session management, relational tree navigation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Database Engines</strong></td>
+<td style="text-align: left;">PostgreSQL / SQLite</td>
+<td style="text-align: left;">Postgres 14+ / SQLite3</td>
+<td style="text-align: left;">Relational database with GiST CIDR spatial index support and WAL mode.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Core Networking</strong></td>
+<td style="text-align: left;">Python <code>ipaddress</code></td>
+<td style="text-align: left;">Standard Library</td>
+<td style="text-align: left;">Standards-compliant IPv4 netmask, network, broadcast, and host manipulation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Frontend UI</strong></td>
+<td style="text-align: left;">HTML5 / CSS3 / Vanilla JS</td>
+<td style="text-align: left;">ES6 Native</td>
+<td style="text-align: left;">Single Page Dark-Mode Dashboard, asynchronous AJAX client.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Testing</strong></td>
+<td style="text-align: left;">Pytest &amp; FastAPI TestClient</td>
+<td style="text-align: left;"><code>7.0+</code></td>
+<td style="text-align: left;">Automated regression testing, JUnit XML integration for CI/CD pipelines.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-multi-tenant-vrf-isolation-architecture">3. Multi-Tenant VRF Isolation Architecture</h2>
+<h3 id="31-concept-of-virtual-routing-and-forwarding-vrf">3.1 Concept of Virtual Routing and Forwarding (VRF)</h3>
+<p>Virtual Routing and Forwarding (VRF) is a core networking technology that allows multiple instances of a routing table to co-exist within the same router or IPAM database simultaneously. </p>
+<p>Without VRF isolation, two subnets using the private IP range <code>10.0.0.0/16</code> would collide in the database. With VRF isolation:
+* <strong>Tenant A (e.g., Client Alpha)</strong> uses <code>10.0.0.0/16</code> under <code>VRF-Alpha</code> (Route Distinguisher <code>65000:100</code>).
+* <strong>Tenant B (e.g., Client Beta)</strong> uses <code>10.0.0.0/16</code> under <code>VRF-Beta</code> (Route Distinguisher <code>65000:200</code>).
+* <strong>Global Table (Null VRF)</strong> holds shared corporate enterprise infrastructure.</p>
+<pre><code>                   +---------------------------------------+
+                   |       Global IPAM Database            |
+                   +---------------------------------------+
+                                       |
+         +-----------------------------+-----------------------------+
+         |                                                           |
++-------------------+                                       +-------------------+
+|  VRF: Client-A    |                                       |  VRF: Client-B    |
+|  RD: 65000:100    |                                       |  RD: 65000:200    |
++-------------------+                                       +-------------------+
+| 10.0.0.0/16       | &lt;--- Isolated Overlapping Ranges ---&gt; | 10.0.0.0/16       |
+| ├── 10.0.1.0/24   |                                       | ├── 10.0.1.0/24   |
+| └── 10.0.2.0/24   |                                       | └── 10.0.2.0/24   |
++-------------------+                                       +-------------------+
+</code></pre>
+<h3 id="32-database-partial-unique-constraint-enforcement">3.2 Database Partial Unique Constraint Enforcement</h3>
+<p>To guarantee multi-tenant isolation at the database layer while preventing duplicate prefixes within the same tenant, custom partial unique indexes are enforced in PostgreSQL and SQLAlchemy:</p>
+<p>$$\text{Unique Key} = (\text{COALESCE}(\text{vrf_id}, \text{'00000000-0000-0000-0000-000000000000'}), \text{prefix})$$</p>
+<pre><code class="language-sql">CREATE UNIQUE INDEX idx_subnets_prefix_vrf_unique 
+ON subnets (COALESCE(vrf_id, '00000000-0000-0000-0000-000000000000'::uuid), prefix);
+</code></pre>
+<hr />
+<h2 id="4-hierarchical-subnet-containment-engine">4. Hierarchical Subnet Containment Engine</h2>
+<h3 id="41-container-subnets-vs-allocation-pools">4.1 Container Subnets vs. Allocation Pools</h3>
+<p>The IPAM system models subnets in a dynamic tree structure (<code>parent_id</code> foreign key referencing <code>subnets.id</code>). Subnets are categorized into two explicit functional types:</p>
+<ol>
+<li><strong>Containers (<code>is_pool = False</code>):</strong></li>
+<li>High-level network blocks (e.g., <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>) meant exclusively to group and organize child subnets.</li>
+<li><strong>Rule:</strong> Host IP addresses (<code>IPAddress</code> records) <strong>cannot</strong> be allocated directly from a container subnet.</li>
+<li>
+<p><strong>Utilization Metric:</strong> Calculated based on the percentage of total parent address space covered by nested child subnets.</p>
+</li>
+<li>
+<p><strong>Allocation Pools (<code>is_pool = True</code>):</strong></p>
+</li>
+<li>Leaf node subnets (e.g., <code>10.0.1.0/24</code>, <code>192.168.1.0/28</code>) dedicated to allocating individual host IP addresses.</li>
+<li><strong>Rule:</strong> Child subnets <strong>cannot</strong> be created inside an allocation pool.</li>
+<li><strong>Utilization Metric:</strong> Calculated based on the percentage of usable host IPs currently assigned.</li>
+</ol>
+<pre><code>10.0.0.0/16 [Container, is_pool=False] (Root)
+│
+├── 10.0.1.0/24 [Pool, is_pool=True] (Allocates host IPs: 10.0.1.1, 10.0.1.2)
+└── 10.0.2.0/24 [Container, is_pool=False] (Intermediate)
+    │
+    ├── 10.0.2.0/25 [Pool, is_pool=True] (Allocates host IPs: 10.0.2.1 ... 10.0.2.126)
+    └── 10.0.2.128/25 [Pool, is_pool=True] (Allocates host IPs)
+</code></pre>
+<hr />
+<h3 id="42-containment-validation-algorithm-validate_and_find_relations">4.2 Containment Validation Algorithm (<code>validate_and_find_relations</code>)</h3>
+<p>When a user submits a request to register a new subnet prefix $P_{\text{new}}$ in VRF $V$, the engine executes the following non-disruptive validation routine:</p>
+<pre><code class="language-python">def validate_and_find_relations(session: Session, new_prefix: IPv4Network, vrf_id: Optional[UUID]):
+    # 1. Query all existing subnets within the specified VRF context
+    existing_subnets = fetch_vrf_subnets(session, vrf_id)
+
+    parent_candidate = None
+    children_candidates = []
+
+    for existing in existing_subnets:
+        # Rule A: Reject exact duplicate prefixes
+        if existing.prefix == new_prefix:
+            raise IPAMValidationError(&quot;Subnet prefix already exists in this VRF.&quot;)
+
+        # Rule B: Inspect CIDR containment if overlap occurs
+        if new_prefix.overlaps(existing.prefix):
+            if new_prefix.subnet_of(existing.prefix):
+                # Find smallest/tightest parent container
+                if not parent_candidate or existing.prefix.subnet_of(parent_candidate.prefix):
+                    parent_candidate = existing
+            elif existing.prefix.subnet_of(new_prefix):
+                # Existing subnet becomes a child of new_prefix
+                children_candidates.append(existing)
+            else:
+                raise IPAMValidationError(&quot;Invalid partial overlap detected.&quot;)
+
+    # Rule C: Enforce pool restriction
+    if parent_candidate and parent_candidate.is_pool:
+        raise IPAMValidationError(&quot;Cannot create subnets inside an allocation pool.&quot;)
+
+    return parent_candidate, children_candidates
+</code></pre>
+<hr />
+<h2 id="5-usable-ip-calculation-boundary-mechanics">5. Usable IP Calculation &amp; Boundary Mechanics</h2>
+<h3 id="51-standard-networks-vs-rfc-3021-point-to-point-links">5.1 Standard Networks vs. RFC 3021 Point-to-Point Links</h3>
+<p>Calculating usable host IP counts requires adherence to RFC standards depending on prefix length:</p>
+<ol>
+<li><strong>Standard Networks ($\le /30$):</strong></li>
+<li>The first IP address is reserved as the <strong>Network Address</strong> (all host bits <code>0</code>).</li>
+<li>The last IP address is reserved as the <strong>Broadcast Address</strong> (all host bits <code>1</code>).</li>
+</ol>
+<p>$$\text{Total IPs} = 2^{(32 - \text{prefixlen})}$$
+   $$\text{Usable IPs} = 2^{(32 - \text{prefixlen})} - 2$$</p>
+<ol>
+<li><strong>Point-to-Point Links &amp; Single Hosts ($/31$ and $/32$ per RFC 3021):</strong></li>
+<li>$/31$ Subnets (2 addresses): Used for point-to-point router links. Both addresses are fully usable hosts.</li>
+<li>$/32$ Subnets (1 address): Loopback interfaces or single host routes. The single address is fully usable.</li>
+</ol>
+<p>$$\text{Usable IPs} = \text{Total IPs}$$</p>
+<hr />
+<h3 id="52-next-available-ip-allocation-routine-find_next_available_ip">5.2 Next Available IP Allocation Routine (<code>find_next_available_ip</code>)</h3>
+<p>The engine automatically computes and allocates the lowest available host IP within an allocation pool:</p>
+<pre><code class="language-python">def find_next_available_ip(session: Session, subnet_id: UUID) -&gt; IPv4Address:
+    subnet = session.get(Subnet, subnet_id)
+    if not subnet.is_pool:
+        raise IPAMValidationError(&quot;Cannot allocate IPs from a container subnet.&quot;)
+
+    allocated_ips = set(session.scalars(
+        select(IPAddress.address).where(IPAddress.subnet_id == subnet_id)
+    ).all())
+
+    # Determine IP generator based on prefix length
+    ip_generator = subnet.prefix.hosts() if subnet.prefix.prefixlen &lt;= 30 else list(subnet.prefix)
+
+    for candidate_ip in ip_generator:
+        if candidate_ip not in allocated_ips:
+            return candidate_ip
+
+    raise IPAMValidationError(&quot;Subnet IP space exhausted.&quot;)
+</code></pre>
+<hr />
+<h2 id="6-stateless-cidr-utility-suite-algorithms">6. Stateless CIDR Utility Suite &amp; Algorithms</h2>
+<p>The system includes a stateless math engine for network planning without requiring database persistence.</p>
+<h3 id="61-cidr-inspection-get_cidr_details">6.1 CIDR Inspection (<code>get_cidr_details</code>)</h3>
+<p>Extracted properties from any valid CIDR string (e.g., <code>192.168.1.0/24</code>):
+* <strong>Network Address:</strong> <code>192.168.1.0</code>
+* <strong>Netmask:</strong> <code>255.255.255.0</code>
+* <strong>Broadcast Address:</strong> <code>192.168.1.255</code>
+* <strong>Wildcard Mask:</strong> <code>0.0.0.255</code>
+* <strong>First Usable IP:</strong> <code>192.168.1.1</code>
+* <strong>Last Usable IP:</strong> <code>192.168.1.254</code>
+* <strong>Flags:</strong> <code>is_private</code>, <code>is_loopback</code>, <code>is_multicast</code>, <code>is_link_local</code>, <code>is_global</code>, <code>is_reserved</code>.</p>
+<hr />
+<h3 id="62-binary-tree-cidr-difference-subtract_cidrs">6.2 Binary-Tree CIDR Difference (<code>subtract_cidrs</code>)</h3>
+<p>Carves occupied sub-blocks out of a parent subnet block, returning the remaining available CIDR blocks.</p>
+<p><strong>Algorithm Mechanism:</strong>
+1. Start with the set of free blocks containing only the parent: $\mathcal{F} = {P}$.
+2. For each occupied block $O$:
+   - For each block $F \in \mathcal{F}$:
+     - If $F \cap O = \emptyset$, retain $F$.
+     - If $F \subseteq O$, drop $F$.
+     - If $O \subset F$, split $F$ recursively into binary halves ($C_1, C_2$) until the exact occupied block is isolated and removed.</p>
+<pre><code>Parent: 10.0.0.0/24 (256 IPs)
+Occupied: [10.0.0.0/26, 10.0.0.128/25]
+
+Step 1: Split 10.0.0.0/24 into 10.0.0.0/25 and 10.0.0.128/25.
+        Drop 10.0.0.128/25 (Occupied).
+Step 2: Split 10.0.0.0/25 into 10.0.0.0/26 and 10.0.0.64/26.
+        Drop 10.0.0.0/26 (Occupied).
+
+Resulting Free Subnets: [10.0.0.64/26]
+</code></pre>
+<hr />
+<h3 id="63-cidr-collision-detector-detect_cidr_collisions">6.3 CIDR Collision Detector (<code>detect_cidr_collisions</code>)</h3>
+<p>Performs pairwise $O(N^2)$ inspection across arbitrary lists of networks to identify overlapping scopes (e.g., checking for collisions between cloud VPCs, branch subnets, or client IP requests).</p>
+<p><strong>Output Structure:</strong>
+* <code>has_collisions</code>: Boolean flag.
+* <code>collisions</code>: List of overlap pairs showing target identifiers and the specific overlapping CIDR block.
+* <code>overlap_matrix</code>: Adjacency matrix dictionary mapping each network ID to all colliding network IDs.</p>
+<hr />
+<h2 id="7-database-architecture-schema-specification">7. Database Architecture &amp; Schema Specification</h2>
+<h3 id="71-entity-relationship-diagram-erd">7.1 Entity-Relationship Diagram (ERD)</h3>
+<pre><code class="language-mermaid">erdiagram
+    VRF ||--o{ SUBNET : &quot;contains&quot;
+    VRF ||--o{ IP_ADDRESS : &quot;isolates&quot;
+    SUBNET ||--o{ SUBNET : &quot;parent of&quot;
+    SUBNET ||--o{ IP_ADDRESS : &quot;holds allocations&quot;
+
+    VRF {
+        uuid id PK
+        string name UK
+        string rd UK
+        text description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SUBNET {
+        uuid id PK
+        uuid vrf_id FK
+        cidr prefix
+        string status
+        uuid parent_id FK
+        boolean is_pool
+        text description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    IP_ADDRESS {
+        uuid id PK
+        uuid vrf_id FK
+        uuid subnet_id FK
+        inet address
+        string status
+        string dns_name
+        string mac_address
+        text description
+        timestamp created_at
+        timestamp updated_at
+    }
+</code></pre>
+<hr />
+<h3 id="72-core-sql-schema-definitions-schemasql">7.2 Core SQL Schema Definitions (<code>schema.sql</code>)</h3>
+<pre><code class="language-sql">-- PostgreSQL Extension Enablement
+CREATE EXTENSION IF NOT EXISTS &quot;uuid-ossp&quot;;
+CREATE EXTENSION IF NOT EXISTS &quot;btree_gist&quot;;
+
+-- 1. VRF Table
+CREATE TABLE vrfs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    rd VARCHAR(255) UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 2. Subnets Table
+CREATE TABLE subnets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vrf_id UUID REFERENCES vrfs(id) ON DELETE CASCADE,
+    prefix CIDR NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reserved', 'deprecated')),
+    parent_id UUID REFERENCES subnets(id) ON DELETE SET NULL,
+    is_pool BOOLEAN NOT NULL DEFAULT TRUE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT chk_ipv4_only CHECK (family(prefix) = 4)
+);
+
+CREATE INDEX idx_subnets_parent_id ON subnets (parent_id);
+CREATE INDEX idx_subnets_prefix_gist ON subnets USING gist (prefix);
+
+-- 3. IP Addresses Table
+CREATE TABLE ip_addresses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vrf_id UUID REFERENCES vrfs(id) ON DELETE CASCADE,
+    subnet_id UUID REFERENCES subnets(id) ON DELETE SET NULL,
+    address INET NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'allocated' CHECK (status IN ('allocated', 'reserved', 'dhcp', 'static')),
+    dns_name VARCHAR(255),
+    description TEXT,
+    mac_address VARCHAR(17) CHECK (mac_address IS NULL OR mac_address ~* '^([0-9a-f]{2}[:-]){5}([0-9a-f]{2})$'),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT chk_ip_ipv4_only CHECK (family(address) = 4),
+    CONSTRAINT chk_host_address CHECK (masklen(address) = 32)
+);
+
+CREATE INDEX idx_ip_addresses_subnet_id ON ip_addresses (subnet_id);
+CREATE INDEX idx_ip_addresses_address ON ip_addresses (address);
+</code></pre>
+<hr />
+<h3 id="73-custom-sqlalchemy-type-decorators-modelspy">7.3 Custom SQLAlchemy Type Decorators (<code>models.py</code>)</h3>
+<p>Python's native <code>ipaddress</code> objects do not automatically serialize to standard string columns in SQLite or PostgreSQL without custom type conversion. The system utilizes custom SQLAlchemy <code>TypeDecorator</code> instances:</p>
+<pre><code class="language-python">class IPv4NetworkType(TypeDecorator):
+    impl = String(49)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return str(value) if isinstance(value, ipaddress.IPv4Network) else str(ipaddress.IPv4Network(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return ipaddress.IPv4Network(value)
+</code></pre>
+<hr />
+<h2 id="8-restful-api-endpoints-reference">8. RESTful API Endpoints Reference</h2>
+<h3 id="81-vrf-management-endpoints">8.1 VRF Management Endpoints</h3>
+<h4 id="post-apiv1vrfs"><code>POST /api/v1/vrfs</code></h4>
+<p>Creates a new Virtual Routing and Forwarding (VRF) domain.
+* <strong>Request Body:</strong>
+  <code>json
+  {
+    "name": "Production-Cloud",
+    "rd": "65000:100",
+    "description": "Primary AWS VPC routing domain"
+  }</code>
+* <strong>Response (<code>201 Created</code>):</strong>
+  <code>json
+  {
+    "id": "e4b3c2a1-8901-4bcd-ef01-23456789abcd",
+    "name": "Production-Cloud",
+    "rd": "65000:100",
+    "description": "Primary AWS VPC routing domain",
+    "created_at": "2026-08-03T14:20:00Z",
+    "updated_at": "2026-08-03T14:20:00Z"
+  }</code></p>
+<h4 id="get-apiv1vrfs"><code>GET /api/v1/vrfs</code></h4>
+<p>Lists all configured VRF domains.</p>
+<h4 id="delete-apiv1vrfsid"><code>DELETE /api/v1/vrfs/{id}</code></h4>
+<p>Deletes a VRF and cascades deletion to all associated subnets and IP allocations (<code>204 No Content</code>).</p>
+<hr />
+<h3 id="82-subnet-management-endpoints">8.2 Subnet Management Endpoints</h3>
+<h4 id="post-apiv1subnets"><code>POST /api/v1/subnets</code></h4>
+<p>Registers a new subnet prefix with dynamic parent-child tree linking and collision validation.
+* <strong>Request Body:</strong>
+  <code>json
+  {
+    "prefix": "10.0.0.0/16",
+    "vrf_id": "e4b3c2a1-8901-4bcd-ef01-23456789abcd",
+    "status": "active",
+    "is_pool": false,
+    "description": "Corporate Root Block"
+  }</code>
+* <strong>Response (<code>201 Created</code>):</strong>
+  <code>json
+  {
+    "id": "11223344-5566-7788-9900-aabbccddeeff",
+    "vrf_id": "e4b3c2a1-8901-4bcd-ef01-23456789abcd",
+    "prefix": "10.0.0.0/16",
+    "status": "active",
+    "parent_id": null,
+    "is_pool": false,
+    "description": "Corporate Root Block",
+    "created_at": "2026-08-03T14:21:00Z",
+    "updated_at": "2026-08-03T14:21:00Z"
+  }</code></p>
+<h4 id="get-apiv1subnetsidutilization"><code>GET /api/v1/subnets/{id}/utilization</code></h4>
+<p>Returns real-time capacity and utilization metrics.
+* <strong>Response (<code>200 OK</code> for Pool Subnet):</strong>
+  <code>json
+  {
+    "subnet_id": "11223344-5566-7788-9900-aabbccddeeff",
+    "prefix": "10.0.1.0/24",
+    "is_pool": true,
+    "total_ips": 256,
+    "usable_ips": 254,
+    "allocated_ips": 127,
+    "free_ips": 127,
+    "utilization_percentage": 50.0
+  }</code></p>
+<h4 id="post-apiv1subnetsidnext-available"><code>POST /api/v1/subnets/{id}/next-available</code></h4>
+<p>Finds and registers the next available sub-block inside a container parent subnet.
+* <strong>Request Body:</strong>
+  <code>json
+  { "new_prefix_len": 24 }</code>
+* <strong>Response (<code>201 Created</code>):</strong> Returns the newly allocated <code>SubnetResponse</code>.</p>
+<hr />
+<h3 id="83-ip-address-management-endpoints">8.3 IP Address Management Endpoints</h3>
+<h4 id="post-apiv1subnetsidallocate-ip"><code>POST /api/v1/subnets/{id}/allocate-ip</code></h4>
+<p>Allocates the next lowest available host IP address from an allocation pool subnet.
+* <strong>Request Body:</strong>
+  <code>json
+  {
+    "status": "allocated",
+    "dns_name": "web-server-01.internal",
+    "description": "Primary Nginx Node",
+    "mac_address": "00:1B:44:11:3A:B7"
+  }</code>
+* <strong>Response (<code>201 Created</code>):</strong>
+  <code>json
+  {
+    "id": "77889900-aabb-ccdd-eeff-001122334455",
+    "vrf_id": "e4b3c2a1-8901-4bcd-ef01-23456789abcd",
+    "subnet_id": "11223344-5566-7788-9900-aabbccddeeff",
+    "address": "10.0.1.1",
+    "status": "allocated",
+    "dns_name": "web-server-01.internal",
+    "description": "Primary Nginx Node",
+    "mac_address": "00:1B:44:11:3A:B7",
+    "created_at": "2026-08-03T14:22:00Z",
+    "updated_at": "2026-08-03T14:22:00Z"
+  }</code></p>
+<h4 id="delete-apiv1ip-addressesid"><code>DELETE /api/v1/ip-addresses/{id}</code></h4>
+<p>Deallocates an IP address, freeing it back to the subnet pool (<code>204 No Content</code>).</p>
+<hr />
+<h3 id="84-stateless-cidr-utility-endpoints">8.4 Stateless CIDR Utility Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Route</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Input Payload</th>
+<th style="text-align: left;">Output Payload</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/v1/cidr/info</code></td>
+<td style="text-align: left;">Inspect Network Details</td>
+<td style="text-align: left;"><code>{"cidr": "192.168.1.0/24"}</code></td>
+<td style="text-align: left;">Network mask, broadcast, usable IPs, flags</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/v1/cidr/split</code></td>
+<td style="text-align: left;">Split CIDR into sub-blocks</td>
+<td style="text-align: left;"><code>{"cidr": "10.0.0.0/24", "new_prefix_len": 26}</code></td>
+<td style="text-align: left;">Array of 4 subnets (<code>/26</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/v1/cidr/supernet</code></td>
+<td style="text-align: left;">Collapse contiguous routes</td>
+<td style="text-align: left;"><code>{"prefixes": ["10.0.0.0/24", "10.0.1.0/24"]}</code></td>
+<td style="text-align: left;">Collapsed supernet (<code>10.0.0.0/23</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/v1/cidr/difference</code></td>
+<td style="text-align: left;">Binary-tree free space subtract</td>
+<td style="text-align: left;"><code>{"parent": "10.0.0.0/24", "occupied": [...]}</code></td>
+<td style="text-align: left;">Remaining unallocated free CIDR blocks</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/v1/cidr/check-collisions</code></td>
+<td style="text-align: left;">Pairwise overlap detection</td>
+<td style="text-align: left;"><code>[{"id": "VPC-A", "cidr": "10.0.0.0/16"}, ...]</code></td>
+<td style="text-align: left;">Overlap pairs &amp; adjacency matrix</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-dashboard-ui-architecture-indexhtml">9. Dashboard UI Architecture (<code>index.html</code>)</h2>
+<p>The system includes a single-page dark-mode administrative dashboard served directly from the FastAPI root <code>/</code>.</p>
+<h3 id="91-visual-theme-css-token-architecture">9.1 Visual Theme &amp; CSS Token Architecture</h3>
+<ul>
+<li><strong>Dark Mode Palette:</strong> Built using Tailwind-inspired HSL color tokens (<code>#0f172a</code> primary background, <code>#1e293b</code> card container background, <code>#6366f1</code> indigo primary accent).</li>
+<li><strong>Typography:</strong> Inter / System UI sans-serif fonts with monospace rendering for IP/CIDR addresses.</li>
+<li><strong>Component System:</strong> Responsive tabs (IPAM Management vs. Stateless CIDR Tools), modal windows, progress bars for subnet utilization, and dynamic badges for subnet/IP status.</li>
+</ul>
+<pre><code>+-----------------------------------------------------------------------------------+
+|  🌐 Enterprise IPAM &amp; CIDR Utility Dashboard                                     |
++-----------------------------------------------------------------------------------+
+|  [VRF Selector: Default Global]  [+ New VRF]  [+ New Subnet]  [+ Allocate IP]    |
++-----------------------------------------------------------------------------------+
+|  Tab 1: Stateful IPAM Explorer          | Tab 2: Stateless CIDR Calculator Suite |
+|  -------------------------------------  | -------------------------------------- |
+|  Subnet Tree View                       | [CIDR Inspector]   [Subnet Splitter]   |
+|  ├── 10.0.0.0/16 (Container)            | [Supernet Aggregator]                  |
+|  │   └── 10.0.1.0/24 (Pool - 50% Util)  | [CIDR Difference]                      |
+|  │       ├── 10.0.1.1 (web-server-01)   | [Collision Detector]                   |
+|  │       └── 10.0.1.2 (db-primary)     |                                        |
++-----------------------------------------------------------------------------------+
+</code></pre>
+<hr />
+<h2 id="10-automated-testing-quality-assurance-suite">10. Automated Testing &amp; Quality Assurance Suite</h2>
+<h3 id="101-test-architecture-test_ipampy">10.1 Test Architecture (<code>test_ipam.py</code>)</h3>
+<p>The system includes an automated unit testing suite utilizing <code>pytest</code> and FastAPI's <code>TestClient</code>.</p>
+<ul>
+<li><strong>Database Isolation:</strong> Tests run against an isolated SQLite file (<code>test_ipam.db</code>) with <code>PRAGMA foreign_keys=ON</code>.</li>
+<li><strong>Clean State Guarantee:</strong> Pytest fixtures enforce table re-creation (<code>drop_all</code> and <code>create_all</code>) before every individual test function runs.</li>
+</ul>
+<pre><code>test_ipam.py
+├── test_create_and_list_vrfs
+├── test_create_subnets_hierarchy
+├── test_subnet_utilization
+├── test_ip_allocation_flow
+├── test_subnet_split_and_next_subnet
+├── test_cidr_info
+├── test_cidr_split
+├── test_cidr_supernet
+├── test_cidr_difference
+└── test_cidr_collisions
+</code></pre>
+<hr />
+<h3 id="102-test-execution-scripts">10.2 Test Execution Scripts</h3>
+<p>Cross-platform test runners are provided in the repository root:
+* <strong>PowerShell (<code>run_tests.ps1</code>):</strong> <code>pytest test_ipam.py -v --junitxml=test-results.xml</code>
+* <strong>Python CLI (<code>run_tests.py</code>):</strong> Multi-platform test runner supporting <code>--report</code> flags.
+* <strong>Shell Script (<code>run_tests.sh</code>):</strong> Bash execution script for Linux/macOS environments.</p>
+<hr />
+<h2 id="11-local-installation-deployment-guide">11. Local Installation &amp; Deployment Guide</h2>
+<h3 id="111-local-development-environment-setup">11.1 Local Development Environment Setup</h3>
+<ol>
+<li>
+<p><strong>Clone Repository &amp; Set Up Virtual Environment:</strong>
+   <code>bash
+   git clone https://github.com/pushyanthmothukuri-pixel/Networking-Concepts.git
+   cd Networking-Concepts
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate</code></p>
+</li>
+<li>
+<p><strong>Install Dependencies:</strong>
+   <code>bash
+   pip install -r requirements.txt</code></p>
+</li>
+<li>
+<p><strong>Run Automated Test Suite:</strong>
+   <code>bash
+   python run_tests.py</code></p>
+</li>
+<li>
+<p><strong>Launch Local Server:</strong>
+   <code>bash
+   uvicorn main:app --reload --host 127.0.0.1 --port 8000</code></p>
+</li>
+<li><strong>Dashboard URL:</strong> <code>http://127.0.0.1:8000/</code></li>
+<li><strong>Swagger API Docs:</strong> <code>http://127.0.0.1:8000/docs</code></li>
+</ol>
+<hr />
+<h3 id="112-production-cloud-deployment-rendercom">11.2 Production Cloud Deployment (Render.com)</h3>
+<ol>
+<li>Log into <strong>Render.com</strong> and create a <strong>PostgreSQL Database</strong>.</li>
+<li>Create a new <strong>Web Service</strong> pointing to your repository.</li>
+<li>Configure settings:</li>
+<li><strong>Runtime:</strong> <code>Python 3</code></li>
+<li><strong>Build Command:</strong> <code>pip install -r requirements.txt</code></li>
+<li><strong>Start Command:</strong> <code>uvicorn main:app --host 0.0.0.0 --port $PORT</code></li>
+<li>Add Environment Variable:</li>
+<li><strong>Key:</strong> <code>DATABASE_URL</code></li>
+<li><strong>Value:</strong> <code>&lt;Render Internal Database URL&gt;</code></li>
+<li>Deploy. The application automatically handles SQLAlchemy <code>postgres://</code> to <code>postgresql://</code> string normalization and creates all database tables on startup.</li>
+</ol>
+<hr />
+<h2 id="12-troubleshooting-error-diagnostics-guide">12. Troubleshooting &amp; Error Diagnostics Guide</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">HTTP Code</th>
+<th style="text-align: left;">Error Message Detail</th>
+<th style="text-align: left;">Root Cause</th>
+<th style="text-align: left;">Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>400 Bad Request</code></td>
+<td style="text-align: left;"><code>Subnet prefix X already exists in this VRF.</code></td>
+<td style="text-align: left;">Duplicate CIDR entry within the same VRF tenant.</td>
+<td style="text-align: left;">Use a distinct CIDR or select the appropriate VRF context.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>400 Bad Request</code></td>
+<td style="text-align: left;"><code>Cannot create subnet inside X because it is configured as an IP allocation pool.</code></td>
+<td style="text-align: left;">Attempted to create a child subnet inside a subnet marked <code>is_pool=True</code>.</td>
+<td style="text-align: left;">Change parent <code>is_pool</code> flag to <code>False</code> or create subnet inside a container.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>400 Bad Request</code></td>
+<td style="text-align: left;"><code>Cannot allocate host IPs from a container subnet.</code></td>
+<td style="text-align: left;">Attempted to allocate an IP address inside a subnet marked <code>is_pool=False</code>.</td>
+<td style="text-align: left;">Set <code>is_pool=True</code> on the target subnet before allocating host IPs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>400 Bad Request</code></td>
+<td style="text-align: left;"><code>IP Address X is not within subnet Y.</code></td>
+<td style="text-align: left;">Specified IP host falls outside the network prefix range.</td>
+<td style="text-align: left;">Ensure the IP falls strictly between the network and broadcast address.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>400 Bad Request</code></td>
+<td style="text-align: left;"><code>No free IP addresses available in subnet X.</code></td>
+<td style="text-align: left;">Allocation pool capacity exhausted.</td>
+<td style="text-align: left;">Expand subnet prefix length or deallocate unused IP addresses.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13-system-summary-future-roadmap">13. System Summary &amp; Future Roadmap</h2>
+<p>The <strong>Enterprise IPAM &amp; CIDR Utility System</strong> delivers an enterprise-ready foundation for IP address planning and network management. </p>
+<h3 id="roadmap-enhancements">Roadmap Enhancements:</h3>
+<ol>
+<li><strong>IPv6 Support:</strong> Extending custom type decorators and math utilities to support dual-stack IPv6 prefixes (<code>/64</code>, <code>/48</code>, <code>/128</code>).</li>
+<li><strong>RBAC &amp; Authentication:</strong> Integrating OAuth2 / JWT authentication with Role-Based Access Control (Admin, Operator, Read-Only).</li>
+<li><strong>External Sync Adapters:</strong> Direct synchronization plugins for Cloud Providers (AWS VPCs, Azure VNets, GCP Cloud Routers) and NetBox APIs.</li>
+</ol>
+<hr />
+<p><em>End of Technical Specification Document.</em></p>
+    </div>
+</body>
+</html>
